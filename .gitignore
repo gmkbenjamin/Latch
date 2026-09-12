@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+*.swp
+
+# Xcode
+xcuserdata/
+DerivedData/
+*.xcuserstate
+build/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Secrets / local
+*.secret
+.env
