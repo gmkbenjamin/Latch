@@ -49,7 +49,7 @@ open Latch.xcodeproj
 ```
 
 1. Set your **Team** on `LatchMac` and `LatchiOS`.
-2. Run **Latch** on the Mac → save your login password → enable Accessibility.
+2. Run **Latch** on the Mac → save your login password → enable Accessibility → optionally turn on **Open at login**.
 3. Run **Latch** on your phone → allow Local Network / Bluetooth.
 4. Scan the QR (or enter the PIN) from the Mac menu bar panel.
 5. Lock the Mac (`⌃⌘Q`), then unlock from the phone.
@@ -58,7 +58,7 @@ open Latch.xcodeproj
 
 - **Session lock only.** Latch unlocks the lock screen while a user is still logged in (`⌃⌘Q`). It does **not** unlock FileVault, the boot login window, or a Mac that has been fully logged out / restarted.
 - **One Mac user session.** Latch runs in the account that launched it and stores **that** user’s password. It is not a Fast User Switching tool. If another account is at the login window, Latch may type the wrong password or fail. Each Mac user who wants unlock needs their own Latch run, password save, Accessibility grant, and phone pairing.
-- **Keep Latch running.** The menu bar app must stay open (or reopen at login) for unlock / lock / status to work.
+- **Keep Latch running.** The menu bar app must stay open for unlock / lock / status to work. Use **Open at login** (from `/Applications/Latch.app`) so it starts after you log in. It does not run before login / at the FileVault screen.
 - **Accessibility required.** macOS must allow Latch to control the computer. Grant it for the binary you actually run (prefer `/Applications/Latch.app`). Debug builds from DerivedData are a different path and need their own toggle.
 - **Password on disk.** The Mac login password is stored under `~/Library/Application Support/Latch/` (not Keychain). Anyone with access to that user account can read it. This is a personal convenience tool, not hardened enterprise software.
 - **Biometrics are optional on iPhone.** Turning off Face ID / Touch ID means anyone who can open the Latch app can unlock paired Macs.

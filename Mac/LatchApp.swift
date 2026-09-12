@@ -1,5 +1,7 @@
 import SwiftUI
 import CoreImage.CIFilterBuiltins
+import ServiceManagement
+import AppKit
 
 @main
 struct LatchApp: App {
@@ -120,6 +122,15 @@ struct LatchApp: App {
                     .font(.caption2)
                     .foregroundStyle(.secondary)
 
+                Toggle("Open at login", isOn: Binding(
+                    get: { appModel.openAtLogin },
+                    set: { appModel.setOpenAtLogin($0) }
+                ))
+                Text(appModel.openAtLoginDetail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
                 Toggle("Listen for unlock requests", isOn: Binding(
                     get: { server.isRunning },
                     set: { on in
@@ -145,6 +156,7 @@ struct LatchApp: App {
                 server.refreshLockState()
                 server.refreshReachability()
                 appModel.refreshAccessibility()
+                appModel.refreshOpenAtLogin()
             }
         } label: {
             Image(systemName: server.isScreenLocked ? "lock.fill" : "lock.open")
@@ -160,6 +172,8 @@ final class AppModel: ObservableObject {
     @Published var passwordDraft = ""
     @Published var passwordSaved = false
     @Published var accessibilityTrusted = ScreenUnlocker.isAccessibilityTrusted
+    @Published var openAtLogin = LoginItem.isEnabled
+    @Published var openAtLoginDetail = LoginItem.statusDescription
     @Published var accessibilityHint = """
         Click Request Accessibility Access, then Open System Settings from that dialog. \
         If Latch still isn’t listed, use Install to Applications & Relaunch, then in Accessibility click + and choose /Applications/Latch.app.
@@ -168,12 +182,42 @@ final class AppModel: ObservableObject {
     func reload() {
         passwordSaved = (try? KeychainStore.string(account: KeychainStore.Key.loginPassword))?.isEmpty == false
         refreshAccessibility()
+        refreshOpenAtLogin()
     }
 
     func refreshAccessibility() {
         let trusted = ScreenUnlocker.isAccessibilityTrusted
         if trusted != accessibilityTrusted {
             accessibilityTrusted = trusted
+        }
+    }
+
+    func refreshOpenAtLogin() {
+        let enabled = LoginItem.isEnabled
+        if enabled != openAtLogin {
+            openAtLogin = enabled
+        }
+        let detail = LoginItem.statusDescription
+        if detail != openAtLoginDetail {
+            openAtLoginDetail = detail
+        }
+    }
+
+    func setOpenAtLogin(_ enabled: Bool) {
+        if enabled, !ScreenUnlocker.isInstalledInApplications {
+            openAtLoginDetail = "Install Latch to /Applications first (button above), then enable Open at login."
+            openAtLogin = false
+            return
+        }
+        if let error = LoginItem.setEnabled(enabled) {
+            openAtLoginDetail = error
+            openAtLogin = LoginItem.isEnabled
+            return
+        }
+        openAtLogin = LoginItem.isEnabled
+        openAtLoginDetail = LoginItem.statusDescription
+        if enabled, SMAppService.mainApp.status == .requiresApproval {
+            openAtLoginDetail = "Turn on Latch under System Settings → General → Login Items."
         }
     }
 

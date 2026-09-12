@@ -8,6 +8,7 @@
 
 /* Begin PBXBuildFile section */
 		41827A4ABDA8D4F18CBB93B7 /* LatchNetwork.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A49DB724001AC15720EEC1F /* LatchNetwork.swift */; };
+		46E741C72C0A5377C76A4383 /* LoginItem.swift in Sources */ = {isa = PBXBuildFile; fileRef = 57DB5A349D8543A97C0CF7B0 /* LoginItem.swift */; };
 		4896D8BFB2BBAAA74D7A1617 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 5FD39BC6AD62A91D8F29799F /* Assets.xcassets */; };
 		4BEEB5685B9029412E3641CB /* LatchApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 613D139F17B78EB2D9140427 /* LatchApp.swift */; };
 		573ADCB1BB9B0EBDBCA36AAD /* Protocol.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8DBF77901B9B620D87ADD60E /* Protocol.swift */; };
@@ -37,6 +38,7 @@
 		305C75C44061686005360C8D /* UnlockChannel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockChannel.swift; sourceTree = "<group>"; };
 		35CC80A9B809C7F3E3A4A4C2 /* PairedMacStore.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PairedMacStore.swift; sourceTree = "<group>"; };
 		4F099FB2478BD97C6E282923 /* Latch.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = Latch.entitlements; sourceTree = "<group>"; };
+		57DB5A349D8543A97C0CF7B0 /* LoginItem.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LoginItem.swift; sourceTree = "<group>"; };
 		5A49DB724001AC15720EEC1F /* LatchNetwork.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LatchNetwork.swift; sourceTree = "<group>"; };
 		5C9ED091E0ACD9B1FE0596D8 /* UnlockServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = UnlockServer.swift; sourceTree = "<group>"; };
 		5FD39BC6AD62A91D8F29799F /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
@@ -85,6 +87,7 @@
 				6FFFECDEBA593F523F8F2130 /* KeychainStore.swift */,
 				4F099FB2478BD97C6E282923 /* Latch.entitlements */,
 				613D139F17B78EB2D9140427 /* LatchApp.swift */,
+				57DB5A349D8543A97C0CF7B0 /* LoginItem.swift */,
 				F42B1E8E1DCDED4027F8F9B2 /* ScreenUnlocker.swift */,
 				5C9ED091E0ACD9B1FE0596D8 /* UnlockServer.swift */,
 			);
@@ -259,6 +262,7 @@
 				D7CAD019A3D7C67EE93F4D9B /* KeychainStore.swift in Sources */,
 				4BEEB5685B9029412E3641CB /* LatchApp.swift in Sources */,
 				41827A4ABDA8D4F18CBB93B7 /* LatchNetwork.swift in Sources */,
+				46E741C72C0A5377C76A4383 /* LoginItem.swift in Sources */,
 				8E6362504758F3E7E71A1F4E /* Protocol.swift in Sources */,
 				B2B3B0526ED82586D3018E42 /* ScreenUnlocker.swift in Sources */,
 				EBFCA9E15A7AC443C52929A5 /* SecureSession.swift in Sources */,
