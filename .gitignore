@@ -16,3 +16,5 @@ build/
 # Secrets / local
 *.secret
 .env
+build-mac.sh
+build-ios.sh
