@@ -4,7 +4,7 @@ Unlock your Mac from iPhone or iPad. Pair once, then unlock over **Wi‑Fi**, **
 
 ## How it works
 
-1. **Latch** on the Mac (menu bar) listens on TCP port **47331** and advertises over Bonjour + Bluetooth LE. The lock icon follows the session even when the menu is closed.
+1. **Latch** on the Mac (menu bar only — no Dock icon) listens on TCP port **47331** and advertises over Bonjour + Bluetooth LE. The lock icon follows the session even when the menu is closed.
 2. Pair from **Latch** on iOS by scanning the QR code or entering the PIN.
 3. Unlock / lock from the phone — Face ID / Touch ID / passcode when **Require Face ID / Touch ID** is on.
 
@@ -16,7 +16,7 @@ Bonjour does not cross Tailscale. Latch still works remotely:
 
 1. Install Tailscale (or your VPN) on both Mac and iPhone.
 2. On the Mac menu bar panel, note the **Reachable at** address (Tailscale `100.x.x.x` is preferred).
-3. On iPhone, under **VPN / Tailscale**, save that IP or MagicDNS name for the selected Mac (port `47331`).
+3. On iPhone, under **VPN / Tailscale**, save that IP or MagicDNS name for the selected Mac (port `47331`). Save tests the connection first.
 4. Turn **Bluetooth only** off. Unlock / lock as usual.
 
 The pairing QR also embeds the Mac’s preferred address when available.
@@ -32,16 +32,17 @@ Allow incoming connections for Latch if macOS asks (firewall).
 | **Open at login** | Starts Latch after you log in. Requires `/Applications/Latch.app`. |
 | **Bluetooth only** | Disable Wi‑Fi unlock; the phone must be nearby. |
 | **Listen for unlock requests** | Turn the companion listener off without quitting. |
+| **Reset Pairing** | Clears the pairing secret so you can scan a new QR / PIN. |
 
 ## iOS options
 
 | Option | What it does |
 |--------|----------------|
 | **Bluetooth only** | Ignore Wi‑Fi / VPN; unlock only nearby over Bluetooth |
-| **Unlock on launch** | Cold-open the app to unlock the selected Mac |
+| **Unlock on launch** | Cold-open the app to unlock the selected Mac (not when switching back from the app switcher) |
 | **Require Face ID / Touch ID** | On by default. Turning it **off** requires Face ID / Touch ID (not passcode). |
 | **VPN / Tailscale** | Saved host:port when you’re not on the same LAN |
-| **Paired Macs** | Pair multiple Macs; long-press to remove |
+| **Paired Macs** | Pair multiple Macs. Long-press (context menu) to remove one; **Remove all pairings** if you have more than one. |
 
 ## Requirements
 
@@ -49,20 +50,21 @@ Allow incoming connections for Latch if macOS asks (firewall).
 - Same Wi‑Fi, Bluetooth nearby, **or** a VPN/Tailscale path between devices
 - Apple Developer signing for your devices
 - **Accessibility** permission for Latch on the Mac
+- **Developer Mode** on the iPhone / iPad for development installs
 
 ## Setup
 
 ```bash
-cd "Unlock screen"
-./build-mac.sh          # Release → /Applications/Latch.app
-./build-ios.sh          # install on a connected iPhone
+git clone https://github.com/gmkbenjamin/Latch.git
+cd Latch
+open Latch.xcodeproj
 ```
 
-Or in Xcode: `xcodegen generate` then open `Latch.xcodeproj`.
+`Latch.xcodeproj` is in the repo. `xcodegen generate` is only needed if you edit `project.yml`.
 
 1. Set your **Team** on `LatchMac` and `LatchiOS`.
-2. Run **Latch** from `/Applications` → save your login password (Keychain or On disk) → enable Accessibility → optionally turn on **Open at login**.
-3. Run **Latch** on your phone → allow Local Network / Bluetooth.
+2. Run **LatchMac**, then use **Install to Applications & Relaunch** (or copy `Latch.app` to `/Applications`). Grant **Accessibility**, save your login password (Keychain or On disk), optionally **Open at login**.
+3. Run **LatchiOS** on a device. Allow **Local Network**, **Bluetooth**, **Camera** (QR), and **Face ID** when asked.
 4. Scan the QR (or enter the PIN) from the Mac menu bar panel.
 5. Lock the Mac (`⌃⌘Q`), then unlock from the phone.
 
@@ -86,4 +88,4 @@ Or in Xcode: `xcodegen generate` then open `Latch.xcodeproj`.
 | `iOS/` | iPhone / iPad app |
 | `Shared/` | Protocol, crypto, network helpers |
 | `project.yml` | XcodeGen project definition |
-| `build-mac.sh` / `build-ios.sh` | Sign, build, and install |
+| `Latch.xcodeproj` | Xcode project (checked in) |
