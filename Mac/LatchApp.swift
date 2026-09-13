@@ -159,9 +159,7 @@ struct LatchApp: App {
                 appModel.refreshOpenAtLogin()
             }
         } label: {
-            Image(systemName: server.isScreenLocked ? "lock.fill" : "lock.open")
-                .symbolRenderingMode(.hierarchical)
-                .accessibilityLabel(server.isScreenLocked ? "Latch — Mac locked" : "Latch — Mac unlocked")
+            MenuBarLockLabel(server: server)
         }
         .menuBarExtraStyle(.window)
     }
@@ -227,6 +225,29 @@ final class AppModel: ObservableObject {
         try? KeychainStore.setString(trimmed, account: KeychainStore.Key.loginPassword)
         passwordDraft = ""
         passwordSaved = true
+    }
+}
+
+/// Dedicated observed view so the status-item icon redraws when lock state changes
+/// while the MenuBarExtra window is closed (the label closure on `App` often will not).
+private struct MenuBarLockLabel: View {
+    @ObservedObject var server: UnlockServer
+
+    var body: some View {
+        Image(nsImage: Self.statusImage(locked: server.isScreenLocked))
+            .id(server.isScreenLocked)
+            .accessibilityLabel(server.isScreenLocked ? "Latch — Mac locked" : "Latch — Mac unlocked")
+    }
+
+    private static func statusImage(locked: Bool) -> NSImage {
+        let symbol = locked ? "lock.fill" : "lock.open"
+        let base = NSImage(systemSymbolName: symbol, accessibilityDescription: nil)
+            ?? NSImage(systemSymbolName: "lock", accessibilityDescription: nil)
+            ?? NSImage()
+        let image = base.copy() as? NSImage ?? base
+        image.isTemplate = true
+        image.size = NSSize(width: 18, height: 18)
+        return image
     }
 }
 

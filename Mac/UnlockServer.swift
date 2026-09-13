@@ -27,11 +27,16 @@ final class UnlockServer: ObservableObject {
     private var activePIN: String = ""
     private var connections: [ObjectIdentifier: ConnectionSession] = [:]
     private var advertisedLocked: Bool?
+    private var lockPollTimer: Timer?
+    private var lockNotificationObservers: [NSObjectProtocol] = []
+    /// Ignore lagging `CGSSessionScreenIsLocked` briefly after a lock/unlock notification.
+    private var lockStateHoldUntil: Date?
 
     init() {
         bluetoothOnly = UserDefaults.standard.bool(forKey: TransportPreference.bluetoothOnlyKey)
         // Deletes only — does not read secrets, so no Keychain ACL dialog / UI freeze.
         KeychainStore.purgeLegacyItems()
+        startLockStateMonitoring()
         Task { @MainActor in
             self.start()
         }
@@ -166,9 +171,62 @@ final class UnlockServer: ObservableObject {
         return NWListener.Service(name: serviceName, type: UnlockService.type, txtRecord: txt)
     }
 
-    /// Poll from the menu-bar timer; refreshes Bonjour TXT + BLE ads when lock state changes.
+    /// Poll lock state; skips while a recent lock/unlock notification is still settling.
     func refreshLockState() {
-        let locked = ScreenUnlocker.isScreenLocked
+        if let hold = lockStateHoldUntil, Date() < hold {
+            return
+        }
+        applyLockState(ScreenUnlocker.isScreenLocked)
+    }
+
+    private func startLockStateMonitoring() {
+        guard lockPollTimer == nil else { return }
+
+        let distributed = DistributedNotificationCenter.default()
+        let lockedName = NSNotification.Name("com.apple.screenIsLocked")
+        let unlockedName = NSNotification.Name("com.apple.screenIsUnlocked")
+        lockNotificationObservers = [
+            distributed.addObserver(forName: lockedName, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.applyExternalLockState(true)
+                }
+            },
+            distributed.addObserver(forName: unlockedName, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor [weak self] in
+                    self?.applyExternalLockState(false)
+                }
+            }
+        ]
+
+        let workspace = NSWorkspace.shared.notificationCenter
+        for name in [NSWorkspace.didWakeNotification, NSWorkspace.screensDidWakeNotification] {
+            lockNotificationObservers.append(
+                workspace.addObserver(forName: name, object: nil, queue: .main) { [weak self] _ in
+                    Task { @MainActor [weak self] in
+                        self?.lockStateHoldUntil = nil
+                        self?.refreshLockState()
+                    }
+                }
+            )
+        }
+
+        // Independent of the menu popover — MenuBarExtra content timers only fire while open.
+        let timer = Timer(timeInterval: 1.0, repeats: true) { [weak self] _ in
+            Task { @MainActor [weak self] in
+                self?.refreshLockState()
+            }
+        }
+        timer.tolerance = 0.25
+        RunLoop.main.add(timer, forMode: .common)
+        lockPollTimer = timer
+    }
+
+    private func applyExternalLockState(_ locked: Bool) {
+        lockStateHoldUntil = Date().addingTimeInterval(2.5)
+        applyLockState(locked)
+    }
+
+    private func applyLockState(_ locked: Bool) {
         if locked != isScreenLocked {
             isScreenLocked = locked
         }
@@ -179,6 +237,19 @@ final class UnlockServer: ObservableObject {
             }
         }
         ble?.updateLockState(locked)
+    }
+
+    /// Unlock typing returns before loginwindow clears the lock flag; recheck until it does.
+    private func scheduleLockStateRechecks() {
+        for delay in [0.5, 1.2, 2.5, 4.0] as [TimeInterval] {
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(delay * 1_000_000_000))
+                if !ScreenUnlocker.isScreenLocked {
+                    lockStateHoldUntil = nil
+                    applyLockState(false)
+                }
+            }
+        }
     }
 
     private func startBluetooth() {
@@ -367,8 +438,10 @@ final class UnlockServer: ObservableObject {
                 switch outcome {
                 case .unlocked:
                     lastEvent = "Mac unlocked"
+                    scheduleLockStateRechecks()
                 case .alreadyUnlocked:
                     lastEvent = "Already unlocked — skipped password"
+                    applyExternalLockState(false)
                 }
             } catch {
                 channel.sendFail(error.localizedDescription)
@@ -412,10 +485,11 @@ final class UnlockServer: ObservableObject {
                 switch outcome {
                 case .locked:
                     lastEvent = "Mac locked"
+                    applyExternalLockState(true)
                 case .alreadyLocked:
                     lastEvent = "Already locked"
+                    applyLockState(true)
                 }
-                refreshLockState()
             } catch {
                 channel.sendFail(error.localizedDescription)
                 lastEvent = "Lock failed: \(error.localizedDescription)"
