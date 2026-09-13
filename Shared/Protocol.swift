@@ -22,6 +22,7 @@ enum TransportPreference {
     static let unlockOnLaunchKey = "unlockOnLaunch"
     static let selectedPairedIDKey = "selectedPairedID"
     static let requireBiometricKey = "requireBiometric"
+    static let loginPasswordStorageKey = "loginPasswordStorage"
 }
 
 enum MacLockState: String, Hashable, Sendable {

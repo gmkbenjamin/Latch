@@ -69,14 +69,38 @@ struct LatchApp: App {
 
                 SecureField("Mac login password", text: $appModel.passwordDraft)
                     .textFieldStyle(.roundedBorder)
+                    .onSubmit {
+                        appModel.savePassword()
+                    }
                 Button(appModel.passwordSaved ? "Update Password" : "Save Password") {
                     appModel.savePassword()
                 }
                 .disabled(appModel.passwordDraft.isEmpty)
-                if !appModel.passwordSaved {
-                    Text("Re-save your Mac password once after this update.")
+                .keyboardShortcut(.defaultAction)
+                Picker("Store password", selection: Binding(
+                    get: { appModel.passwordStorage },
+                    set: { appModel.setPasswordStorage($0) }
+                )) {
+                    ForEach(LoginPasswordStorage.allCases) { storage in
+                        Text(storage.title).tag(storage)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                Text(appModel.passwordStorage.detail)
+                    .font(.caption2)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                if appModel.passwordSaved {
+                    Label(appModel.passwordStorage.savedLabel, systemImage: appModel.passwordStorage == .keychain ? "key.fill" : "folder.fill")
+                        .foregroundStyle(.green)
+                        .font(.caption)
+                }
+                if let passwordError = appModel.passwordError {
+                    Text(passwordError)
                         .font(.caption2)
-                        .foregroundStyle(.secondary)
+                        .foregroundStyle(.red)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 if appModel.accessibilityTrusted {
@@ -169,6 +193,8 @@ struct LatchApp: App {
 final class AppModel: ObservableObject {
     @Published var passwordDraft = ""
     @Published var passwordSaved = false
+    @Published var passwordError: String?
+    @Published var passwordStorage = KeychainStore.loginPasswordStorage
     @Published var accessibilityTrusted = ScreenUnlocker.isAccessibilityTrusted
     @Published var openAtLogin = LoginItem.isEnabled
     @Published var openAtLoginDetail = LoginItem.statusDescription
@@ -178,6 +204,7 @@ final class AppModel: ObservableObject {
         """
 
     func reload() {
+        passwordStorage = KeychainStore.loginPasswordStorage
         passwordSaved = (try? KeychainStore.string(account: KeychainStore.Key.loginPassword))?.isEmpty == false
         refreshAccessibility()
         refreshOpenAtLogin()
@@ -219,12 +246,31 @@ final class AppModel: ObservableObject {
         }
     }
 
+    func setPasswordStorage(_ storage: LoginPasswordStorage) {
+        do {
+            try KeychainStore.setLoginPasswordStorage(storage)
+            passwordStorage = KeychainStore.loginPasswordStorage
+            passwordSaved = (try? KeychainStore.string(account: KeychainStore.Key.loginPassword))?.isEmpty == false
+            passwordError = nil
+        } catch {
+            passwordStorage = KeychainStore.loginPasswordStorage
+            passwordError = "Could not move password: \(error.localizedDescription)"
+        }
+    }
+
     func savePassword() {
         let trimmed = passwordDraft.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        try? KeychainStore.setString(trimmed, account: KeychainStore.Key.loginPassword)
-        passwordDraft = ""
-        passwordSaved = true
+        do {
+            try KeychainStore.setString(trimmed, account: KeychainStore.Key.loginPassword)
+            passwordDraft = ""
+            passwordSaved = true
+            passwordError = nil
+            passwordStorage = KeychainStore.loginPasswordStorage
+        } catch {
+            passwordSaved = false
+            passwordError = "Could not save password: \(error.localizedDescription)"
+        }
     }
 }
 

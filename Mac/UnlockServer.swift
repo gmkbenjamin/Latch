@@ -34,7 +34,7 @@ final class UnlockServer: ObservableObject {
 
     init() {
         bluetoothOnly = UserDefaults.standard.bool(forKey: TransportPreference.bluetoothOnlyKey)
-        // Deletes only — does not read secrets, so no Keychain ACL dialog / UI freeze.
+        // Pairing leftovers only — does not read login Keychain (avoids ACL dialog / UI freeze).
         KeychainStore.purgeLegacyItems()
         startLockStateMonitoring()
         Task { @MainActor in

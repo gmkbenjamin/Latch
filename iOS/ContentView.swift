@@ -47,6 +47,8 @@ struct ContentView: View {
     @State private var didAutoUnlockThisProcess = false
     /// Once true, further foregroundings are app switches, not launches.
     @State private var hasBeenBackgrounded = false
+    @State private var isConfirmingBiometricChange = false
+    @State private var actionInFlight = false
 
     var body: some View {
         NavigationStack {
@@ -189,7 +191,7 @@ struct ContentView: View {
             .tint(Color(red: 0.85, green: 0.92, blue: 0.55))
             .disabled(!client.isPaired)
 
-            Toggle(isOn: $requireBiometric) {
+            Toggle(isOn: biometricRequirementBinding) {
                 VStack(alignment: .leading, spacing: 2) {
                     Text("Require Face ID / Touch ID")
                         .font(.custom("AvenirNext-DemiBold", size: 15))
@@ -202,6 +204,43 @@ struct ContentView: View {
                 }
             }
             .tint(Color(red: 0.85, green: 0.92, blue: 0.55))
+            .disabled(isConfirmingBiometricChange)
+        }
+    }
+
+    private var biometricRequirementBinding: Binding<Bool> {
+        Binding(
+            get: { requireBiometric },
+            set: { newValue in
+                if requireBiometric, !newValue {
+                    Task { await confirmDisableBiometrics() }
+                } else {
+                    requireBiometric = newValue
+                }
+            }
+        )
+    }
+
+    private func confirmDisableBiometrics() async {
+        guard !isConfirmingBiometricChange else { return }
+        isConfirmingBiometricChange = true
+        defer { isConfirmingBiometricChange = false }
+        do {
+            _ = try await BiometricGate.authenticate(
+                reason: "Turn off Face ID for Latch",
+                biometricsOnly: true
+            )
+            requireBiometric = false
+        } catch let error as BiometricGate.AuthError {
+            requireBiometric = true
+            if let message = BiometricGate.userFacingMessage(from: error) {
+                alertMessage = message
+            }
+        } catch {
+            requireBiometric = true
+            if let message = BiometricGate.userFacingMessage(from: error) {
+                alertMessage = message
+            }
         }
     }
 
@@ -252,26 +291,26 @@ struct ContentView: View {
             Button {
                 Task { await unlockSelected() }
             } label: {
-                Text(client.isBusy ? "Working…" : "Unlock selected Mac")
+                Text((client.isBusy || actionInFlight) ? "Working…" : "Unlock selected Mac")
                     .font(.custom("AvenirNext-Bold", size: 18))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
                     .background(Color(red: 0.85, green: 0.92, blue: 0.55))
                     .foregroundStyle(Color(red: 0.08, green: 0.12, blue: 0.10))
             }
-            .disabled(client.isBusy || selectedOnlineMac() == nil)
+            .disabled(client.isBusy || actionInFlight || selectedOnlineMac() == nil)
 
             Button {
                 Task { await lockSelected() }
             } label: {
-                Text(client.isBusy ? "Working…" : "Lock selected Mac")
+                Text((client.isBusy || actionInFlight) ? "Working…" : "Lock selected Mac")
                     .font(.custom("AvenirNext-Bold", size: 18))
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 18)
                     .background(Color.white.opacity(0.12))
                     .foregroundStyle(.white)
             }
-            .disabled(client.isBusy || selectedOnlineMac() == nil)
+            .disabled(client.isBusy || actionInFlight || selectedOnlineMac() == nil)
 
             if client.pairedMacs.count > 1 {
                 Button("Remove all pairings") {
@@ -604,6 +643,9 @@ struct ContentView: View {
     }
 
     private func unlockSelected() async {
+        guard !actionInFlight else { return }
+        actionInFlight = true
+        defer { actionInFlight = false }
         guard let mac = selectedOnlineMac() else {
             alertMessage = discovery.bluetoothOnly
                 ? "Paired Mac not found over Bluetooth."
@@ -619,11 +661,16 @@ struct ContentView: View {
             }
             try await client.unlock(mac: mac, method: method, bluetoothOnly: discovery.bluetoothOnly)
         } catch {
-            alertMessage = error.localizedDescription
+            if let message = BiometricGate.userFacingMessage(from: error) {
+                alertMessage = message
+            }
         }
     }
 
     private func lockSelected() async {
+        guard !actionInFlight else { return }
+        actionInFlight = true
+        defer { actionInFlight = false }
         guard let mac = selectedOnlineMac() else {
             alertMessage = discovery.bluetoothOnly
                 ? "Paired Mac not found over Bluetooth."
@@ -639,7 +686,9 @@ struct ContentView: View {
             }
             try await client.lock(mac: mac, method: method, bluetoothOnly: discovery.bluetoothOnly)
         } catch {
-            alertMessage = error.localizedDescription
+            if let message = BiometricGate.userFacingMessage(from: error) {
+                alertMessage = message
+            }
         }
     }
 
